@@ -406,7 +406,7 @@ def samples(category, start_letters='ABC'):
     for start_letter in start_letters:
         print(sample(category, start_letter))
 
-samples('names\\Russian', 'A')
+samples('Russian', 'A')
 
 
 samples('German', 'GER')

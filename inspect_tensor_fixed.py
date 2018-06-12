@@ -122,6 +122,10 @@ def buildLang():
     t_input_filtered = t_input_filtered[t_input_filtered.body.apply(type) != float]['body']
     t_input_bound = t_input_filtered[t_input_filtered.map(lambda x: len(x.split())) == 20].reset_index(drop=True)
 
+    # with open("donald.txt",'w')  as file:
+    #     for line in t_input_bound:
+    #         file.write(line)
+    #         file.write(". ")
 
     resulting_set, language = prepareData(t_input_bound,"donald")
 
