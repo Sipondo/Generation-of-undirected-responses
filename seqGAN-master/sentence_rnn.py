@@ -5,10 +5,14 @@ from io import open
 import glob
 import unicodedata
 import string
-
+import sys
+sys.path.append("")
+sys.path.append("..")
 import torch
 import torch.nn as nn
+import inspect_tensor_fixed
 
+language = inspect_tensor_fixed.buildLang()
 class RNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(RNN, self).__init__()
@@ -45,7 +49,7 @@ class RNN(nn.Module):
 
 import random
 
-oracle_samples_path = 'seqGAN-master/donald.trc'
+oracle_samples_path = './donald.trc'
 input_data = torch.load(oracle_samples_path).type(torch.LongTensor)
 
 # Random item from a list
@@ -82,42 +86,44 @@ randomTrainingPair()
 # of initial hidden state or some other strategy.
 #
 
-# One-hot vector for category
-def categoryTensor(category):
-    li = all_categories.index(category)
-    tensor = torch.zeros(1, n_categories)
-    tensor[0][li] = 1
-    return tensor
-
-# One-hot matrix of first to last letters (not including EOS) for input
-def inputTensor(line):
-    tensor = torch.zeros(len(line), 1, n_letters)
-    for li in range(len(line)):
-        letter = line[li]
-        tensor[li][0][all_letters.find(letter)] = 1
-    return tensor
-
-# LongTensor of second letter to end (EOS) for target
-def targetTensor(line):
-    letter_indexes = [all_letters.find(line[li]) for li in range(1, len(line))]
-    letter_indexes.append(n_letters - 1) # EOS
-    return torch.LongTensor(letter_indexes)
-
-
-######################################################################
-# For convenience during training we'll make a ``randomTrainingExample``
-# function that fetches a random (category, line) pair and turns them into
-# the required (category, input, target) tensors.
+# # One-hot vector for category
+# def categoryTensor(category):
+#     li = all_categories.index(category)
+#     tensor = torch.zeros(1, n_categories)
+#     tensor[0][li] = 1
+#     return tensor
 #
-
-# Make category, input, and target tensors from a random category, line pair
+# # One-hot matrix of first to last letters (not including EOS) for input
+# def inputTensor(line):
+#     tensor = torch.zeros(len(line), 1, n_letters)
+#     for li in range(len(line)):
+#         letter = line[li]
+#         tensor[li][0][all_letters.find(letter)] = 1
+#     return tensor
+#
+# # LongTensor of second letter to end (EOS) for target
+# def targetTensor(line):
+#     letter_indexes = [all_letters.find(line[li]) for li in range(1, len(line))]
+#     letter_indexes.append(n_letters - 1) # EOS
+#     return torch.LongTensor(letter_indexes)
+#
+#
+# ######################################################################
+# # For convenience during training we'll make a ``randomTrainingExample``
+# # function that fetches a random (category, line) pair and turns them into
+# # the required (category, input, target) tensors.
+# #
+#
+# # Make category, input, and target tensors from a random category, line pair
+# def randomTrainingExample():
+#     category, line = randomTrainingPair()
+#     category_tensor = categoryTensor(category)
+#     input_line_tensor = inputTensor(line)
+#     target_line_tensor = targetTensor(line)
+#     return category_tensor, input_line_tensor, target_line_tensor
+#
 def randomTrainingExample():
-    category, line = randomTrainingPair()
-    category_tensor = categoryTensor(category)
-    input_line_tensor = inputTensor(line)
-    target_line_tensor = targetTensor(line)
-    return category_tensor, input_line_tensor, target_line_tensor
-
+    return randomTrainingPair()
 
 ######################################################################
 # Training the Network

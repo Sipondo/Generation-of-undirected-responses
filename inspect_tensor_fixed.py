@@ -120,27 +120,26 @@ def buildLang():
 
     t_input_filtered = text_input_noempty.replace(pattern,"").str.lower().replace(p_spaces," ").to_frame()
     t_input_filtered = t_input_filtered[t_input_filtered.body.apply(type) != float]['body']
-    t_input_bound = t_input_filtered[t_input_filtered.map(lambda x: len(x.split())) == 20].reset_index(drop=True)
+    t_input_bound = t_input_filtered[t_input_filtered.map(lambda x: len(x.split())) == 10].reset_index(drop=True)
 
-    # with open("donald.txt",'w')  as file:
-    #     for line in t_input_bound:
-    #         file.write(line)
-    #         file.write(". ")
+    with open("donald.txt",'w')  as file:
+        for line in t_input_bound:
+            file.write(line)
+            file.write(". ")
 
     resulting_set, language = prepareData(t_input_bound,"donald")
 
     return language
-
     # encoded_set = resulting_set.map(lambda x: indexesFromSentence(language, x))
     #
     # npmatrix_out = np.zeros((len(encoded_set.values),np.max([len(x) for x in encoded_set.values])),dtype=np.int32)
     #
     # for i in range(npmatrix_out.shape[0]):
-    #     for j in range(len(encoded_set[i])):z
+    #     for j in range(len(encoded_set[i])):
     #         npmatrix_out[i,j] = encoded_set[i][j]
     #
     #
     # tensor_out = torch.tensor(npmatrix_out, dtype = torch.long, device=device)
     #
     # torch.save(tensor_out,"donald.trc")
-    #
+    # return language

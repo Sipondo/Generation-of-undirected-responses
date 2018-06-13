@@ -19,7 +19,7 @@ import inspect_tensor_fixed
 language = inspect_tensor_fixed.buildLang()
 CUDA = True
 VOCAB_SIZE = 3000#5000
-MAX_SEQ_LEN = 20
+MAX_SEQ_LEN = 10
 START_LETTER = 0
 BATCH_SIZE = 32
 MLE_TRAIN_EPOCHS = 50#100
