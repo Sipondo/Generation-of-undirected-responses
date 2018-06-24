@@ -35,13 +35,15 @@ def test(model):
 
 def loop_until_short(model):
     s_length = 1000
+    sentence=""
+    #while len(sentence.split())!=10:
     while s_length>500:
         sentence = test(model)
         s_length = len(sentence)
     return sentence
 
 def train_all():
-    MARKOV_SIZE = 2
+    MARKOV_SIZE = 10
     train()
 
 train_all()
@@ -54,4 +56,4 @@ test_sentence = test(model)
 
 test_sentence = loop_until_short(model)
 len(test_sentence)
-test_sentence
+print(test_sentence)

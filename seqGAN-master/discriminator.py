@@ -68,4 +68,3 @@ class Discriminator(nn.Module):
         h = self.init_hidden(inp.size()[0])
         out = self.forward(inp, h)
         return loss_fn(out, target)
-

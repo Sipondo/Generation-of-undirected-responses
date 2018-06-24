@@ -18,17 +18,17 @@ import inspect_tensor_fixed
 
 language = inspect_tensor_fixed.buildLang()
 CUDA = True
-VOCAB_SIZE = 3000#5000
+VOCAB_SIZE = 16000#5000
 MAX_SEQ_LEN = 10
 START_LETTER = 0
 BATCH_SIZE = 32
 MLE_TRAIN_EPOCHS = 50#100
-DIS_PRETRAIN_EPOCHS = 10#50
+DIS_PRETRAIN_EPOCHS = 5#50
 ADV_TRAIN_EPOCHS = 50 #50
 POS_NEG_SAMPLES = 10000
 
-GEN_EMBEDDING_DIM = 32
-GEN_HIDDEN_DIM = 32
+GEN_EMBEDDING_DIM = 128
+GEN_HIDDEN_DIM = 256
 DIS_EMBEDDING_DIM = 64
 DIS_HIDDEN_DIM = 64
 
@@ -66,7 +66,7 @@ def train_generator_MLE(gen, gen_opt, oracle, real_data_samples, epochs):
             loss.backward()
             gen_opt.step()
 
-            total_loss += loss.data[0]
+            total_loss += loss.item()
 
             if (i / BATCH_SIZE) % ceil(
                             ceil(POS_NEG_SAMPLES / float(BATCH_SIZE)) / 10.) == 0:  # roughly every 10% of an epoch
@@ -113,9 +113,9 @@ def train_discriminator(discriminator, dis_opt, real_data_samples, generator, or
 
     # generating a small validation set before training (using oracle and generator)
     #pos_val = oracle.sample(100)
-    random_sample = torch.randperm(oracle.shape[0])[:100]
+    random_sample = torch.randperm(oracle.shape[0])[:1000]
     pos_val = oracle[random_sample]
-    neg_val = generator.sample(100)
+    neg_val = generator.sample(1000)
     val_inp, val_target = helpers.prepare_discriminator_data(pos_val, neg_val, gpu=CUDA)
 
     for d_step in range(d_steps):
@@ -136,8 +136,8 @@ def train_discriminator(discriminator, dis_opt, real_data_samples, generator, or
                 loss.backward()
                 dis_opt.step()
 
-                total_loss += loss.data[0]
-                total_acc += torch.sum((out>0.5)==(target>0.5)).data[0]
+                total_loss += loss.item()
+                total_acc += torch.sum((out>0.5)==(target>0.5)).item()
 
                 if (i / BATCH_SIZE) % ceil(ceil(2 * POS_NEG_SAMPLES / float(
                         BATCH_SIZE)) / 10.) == 0:  # roughly every 10% of an epoch
@@ -149,7 +149,7 @@ def train_discriminator(discriminator, dis_opt, real_data_samples, generator, or
 
             val_pred = discriminator.batchClassify(val_inp)
             print(' average_loss = %.4f, train_acc = %.4f, val_acc = %.4f' % (
-                total_loss, total_acc, torch.sum((val_pred>0.5)==(val_target>0.5)).data[0]/200.))
+                total_loss, total_acc, torch.sum((val_pred>0.5)==(val_target>0.5)).item()/2000.))
 
 # MAIN
 if __name__ == '__main__':
@@ -173,7 +173,7 @@ if __name__ == '__main__':
 
     # GENERATOR MLE TRAINING
     print('Starting Generator MLE Training...')
-    gen_optimizer = optim.Adam(gen.parameters(), lr=1e-2)
+    gen_optimizer = optim.Adam(gen.parameters(), lr=0.005)#e-2)
     train_generator_MLE(gen, gen_optimizer, oracle, oracle_samples, MLE_TRAIN_EPOCHS)
 
     # torch.save(gen.state_dict(), pretrained_gen_path)
@@ -181,7 +181,7 @@ if __name__ == '__main__':
 
     # PRETRAIN DISCRIMINATOR
     print('\nStarting Discriminator Training...')
-    dis_optimizer = optim.Adagrad(dis.parameters())
+    dis_optimizer = optim.Adagrad(dis.parameters(), lr=0.005)
     train_discriminator(dis, dis_optimizer, oracle_samples, gen, oracle, DIS_PRETRAIN_EPOCHS, 3)
 
     # torch.save(dis.state_dict(), pretrained_dis_path)
@@ -198,7 +198,7 @@ if __name__ == '__main__':
         # TRAIN GENERATOR
         print('\nAdversarial Training Generator : ', end='')
         sys.stdout.flush()
-        train_generator_PG(gen, gen_optimizer, oracle, dis, 10)
+        train_generator_PG(gen, gen_optimizer, oracle, dis, 15)
         testsamp = gen.sample(3).tolist()
         for sentence in testsamp:
             print(" ".join([language.index2word[word] for word in sentence]))

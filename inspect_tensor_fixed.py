@@ -1,5 +1,6 @@
 import sys
 sys.path.append("")
+sys.path.append("seqGAN-master")
 import os
 import torch
 import torch.optim as optim
@@ -8,6 +9,8 @@ import pandas as pd
 import numpy as np
 import re, string
 import random
+
+prefix = ""#"seqGAN-master/"
 
 class Lang:
     def __init__(self, name):
@@ -81,10 +84,19 @@ def tensorFromSentence(lang, sentence):
     indexes.append(EOS_token)
     return torch.tensor(indexes, dtype=torch.long, device=device).view(-1, 1)
 
+def load_words():
+    with open(prefix+'english-words-master/words_alpha.txt') as word_file:
+        valid_words = set(word_file.read().split())
+
+    return valid_words
+
 def buildLang():
+    english_words = load_words()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    csv_donald = pd.read_csv(os.path.join("csvs", "export_thedonald.csv"))
+    df1 = pd.read_csv(os.path.join(prefix+"csvs", "export_thedonald_jan.csv"))
+    df2 = pd.read_csv(os.path.join(prefix+"csvs", "export_thedonald_feb.csv"))
+    csv_donald = pd.concat([df1, df2])
 
     #
     #
@@ -98,6 +110,7 @@ def buildLang():
     text_input_noempty = text_input_noempty[text_input_noempty != "[removed]"]
     text_input_noempty = text_input_noempty[text_input_noempty != "nan"]
     text_input_noempty = text_input_noempty[text_input_noempty != None]
+    #text_input_noempty = text_input_noempty[text_input_noempty.map(lambda x: not "bert" in x)].reset_index(drop=True)
 
 
     SOS_token = 0
@@ -120,7 +133,8 @@ def buildLang():
 
     t_input_filtered = text_input_noempty.replace(pattern,"").str.lower().replace(p_spaces," ").to_frame()
     t_input_filtered = t_input_filtered[t_input_filtered.body.apply(type) != float]['body']
-    t_input_bound = t_input_filtered[t_input_filtered.map(lambda x: len(x.split())) == 10].reset_index(drop=True)
+    t_input_bound = t_input_filtered[t_input_filtered.map(lambda x: len(x.split())) == 10]
+    t_input_bound = t_input_bound[t_input_bound.map(lambda x: np.all([y in english_words for y in x.split()]))].reset_index(drop=True)
 
     with open("donald.txt",'w')  as file:
         for line in t_input_bound:
@@ -129,7 +143,7 @@ def buildLang():
 
     resulting_set, language = prepareData(t_input_bound,"donald")
 
-    return language
+    # 
     # encoded_set = resulting_set.map(lambda x: indexesFromSentence(language, x))
     #
     # npmatrix_out = np.zeros((len(encoded_set.values),np.max([len(x) for x in encoded_set.values])),dtype=np.int32)
@@ -142,4 +156,6 @@ def buildLang():
     # tensor_out = torch.tensor(npmatrix_out, dtype = torch.long, device=device)
     #
     # torch.save(tensor_out,"donald.trc")
-    # return language
+    return language#, t_input_bound
+    #
+#lang, tinput = buildLang()
