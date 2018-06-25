@@ -1,8 +1,0 @@
-.vscode
-__pycache__
-token
-generator/datasets/RC_2017-06
-generator/datasets/*.json
-classifier/pol_accounts.csv
-classifier/pol_tweets.csv
-GoogleNews*
