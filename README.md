@@ -23,7 +23,7 @@ we have used.
 
 In general, these have been our sources:
 
-Models:
+(based on) Models:
 - GAN: https://github.com/suragnair/seqGAN
 - RNN: https://pytorch.org/tutorials/intermediate/char_rnn_generation_tutorial.html
 - Markov: https://github.com/jsvine/markovify
