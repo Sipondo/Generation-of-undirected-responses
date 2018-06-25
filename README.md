@@ -15,5 +15,18 @@ by 	dr. G.E. Kachergis
 following the description on:
 http://kachergis.com/projects/final_project.html
 
+We have used this opportunity to study generative models, in particular GAN's. We had
+never worked in PyTorch before and gave it a try after noticing it's relevance in literature.
+
 All files include a header depicting what our original work is and what libraries/resources
 we have used.
+
+In general, these have been our sources:
+
+Models:
+- GAN: https://github.com/suragnair/seqGAN
+- RNN: https://pytorch.org/tutorials/intermediate/char_rnn_generation_tutorial.html
+- Markov: https://github.com/jsvine/markovify
+
+- Language embedder: https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
+- English word dictionary: https://github.com/dwyl/english-words
