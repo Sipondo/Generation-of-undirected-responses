@@ -28,5 +28,6 @@ Models:
 - RNN: https://pytorch.org/tutorials/intermediate/char_rnn_generation_tutorial.html
 - Markov: https://github.com/jsvine/markovify
 
+Others:
 - Language embedder: https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
 - English word dictionary: https://github.com/dwyl/english-words
