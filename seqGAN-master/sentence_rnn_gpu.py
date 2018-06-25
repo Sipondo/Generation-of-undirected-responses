@@ -54,7 +54,7 @@ lang = inspect_tensor_fixed.buildLang()
 n_letters = lang.n_words
 oracle_samples_path = './donald.trc'
 input_data = torch.load(oracle_samples_path).type(torch.LongTensor)
-input_data.cuda()
+input_data#.cuda()
 
 # Random item from a list
 def randomChoice(l):
@@ -75,7 +75,7 @@ def randomChoice(l):
 
 # One-hot matrix of first to last letters (not including EOS) for input
 def inputTensor(line):
-    tensor = torch.zeros(len(line), 1, n_letters).cuda()
+    tensor = torch.cuda.FloatTensor(len(line), 1, n_letters).fill_(0)
     for li in range(len(line)):
         letter = line[li]
         tensor[li][0][letter] = 1
@@ -85,7 +85,7 @@ def inputTensor(line):
 def targetTensor(line):
     letter_indexes = [line[li] for li in range(1, len(line))]
     letter_indexes.append(n_letters - 1) # EOS
-    longtense = torch.cuda.LongTensor(letter_indexes).cuda()
+    longtense = torch.cuda.LongTensor(letter_indexes)
     return longtense
 
 def randomTrainingExample():
@@ -147,7 +147,7 @@ def timeSince(since):
 rnn = RNN(n_letters, 128, n_letters)
 rnn = rnn.cuda()
 
-n_iters = 10000
+n_iters = 1000
 print_every = 5
 plot_every = 500
 all_losses = []
@@ -156,6 +156,7 @@ total_loss = 0 # Reset every plot_every iters
 start = time.time()
 
 for iter in range(1, n_iters + 1):
+    torch.cuda.empty_cache()
     output, loss = train(*randomTrainingExample())
     total_loss += loss
 

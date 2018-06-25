@@ -5,22 +5,22 @@ MARKOV_SIZE = 2 # State size of markov model for training
 
 def train():
     with open('' + "donald" + '.txt', encoding="utf8") as f:
-        text = f.read()
+        #text = f.read()
         # Build the model.
         # Don't retain original corpus. (Means sentences are often repeated instead of original)
-        model = markovify.Text(text, state_size=MARKOV_SIZE, retain_original=False)
+        model = markovify.Text(f, state_size=MARKOV_SIZE, retain_original=True)
 
     ## Save model
     model_json = model.to_json()
     with open('models/' + MODEL_NAME + str(MARKOV_SIZE) + '.json', 'w+', encoding="utf8") as f:
         f.write(model_json)
     print('Model is trained and saved!')
+    return model
 
 def load(model_name=MODEL_NAME):
     with open('models/' + model_name + str(MARKOV_SIZE) + '.json', encoding="utf8") as f:
-        model_json = f.read()
-
-    model = markovify.Text.from_json(model_json)
+        #model_json = f.read()
+        model = markovify.Text.from_json(f)
 
     return model
 
@@ -37,16 +37,16 @@ def loop_until_short(model):
     s_length = 1000
     sentence=""
     #while len(sentence.split())!=10:
-    while s_length>500:
+    while s_length>1000:
         sentence = test(model)
         s_length = len(sentence)
     return sentence
 
 def train_all():
     MARKOV_SIZE = 10
-    train()
+    return train()
 
-train_all()
+model = train_all()
 
 model = load()
 

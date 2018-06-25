@@ -142,9 +142,9 @@ def timeSince(since):
 
 rnn = RNN(n_letters, 128, n_letters)
 
-n_iters = 100000
-print_every = 100
-plot_every = 500
+n_iters = 50
+print_every = 5
+plot_every = 5
 all_losses = []
 total_loss = 0 # Reset every plot_every iters
 
@@ -202,11 +202,12 @@ plt.plot(all_losses)
 #    training and have the network choose its own starting letter.
 #
 
-max_length = 20
+max_length = 10
 
-# Sample from a category and starting letter
-def sample(category, start_letter='A'):
+# Sample from a category and starting word
+def sample(start_letter='they'):
     with torch.no_grad():  # no need to track history in sampling
+        start_letter = [lang.word2index[start_letter]]
         input = inputTensor(start_letter)
         hidden = rnn.initHidden()
 
@@ -216,7 +217,7 @@ def sample(category, start_letter='A'):
             output, hidden = rnn(input[0], hidden)
             topv, topi = output.topk(1)
             topi = topi[0][0]
-            if topi == n_words - 1:
+            if topi == n_letters - 1:
                 break
             else:
                 letter = all_letters[topi]
@@ -233,6 +234,7 @@ def samples(category, start_letters='ABC'):
 
 samples('names\\Russian', 'A')
 
+sample()
 
 samples('German', 'GER')
 
