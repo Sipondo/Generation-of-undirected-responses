@@ -1,4 +1,20 @@
-# -*- coding: utf-8 -*-
+################
+#Pytorch RNN for sentence generation
+#Iterates over sequences learning to predict successors
+#Requires .trc file that is generated (on import) by inspect_tensor_fixed
+#
+#The network is heavily based on the pytorch tutorial:
+#Generating Names with a Character-Level RNN
+#https://pytorch.org/tutorials/intermediate/char_rnn_generation_tutorial.html
+#
+#We heavily altered the example, switching it from Character generation to
+#sentence generation (with a similar representation system).
+#The original network also included support for multiple languages. In
+#our research this was not necessary and was thus ommitted.
+#
+#You can also find a GPU version in the same repo called sentence_rnn_gpu.py
+#
+#All other code is strictly our work; Bauke Brenninkmeijer and Ties Robroek.
 
 from __future__ import unicode_literals, print_function, division
 from io import open
@@ -7,12 +23,14 @@ import unicodedata
 import string
 import sys
 sys.path.append("")
-sys.path.append("..")
 import torch
 import torch.nn as nn
 import inspect_tensor_fixed
+import time
+import math
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
-#language = inspect_tensor_fixed.buildLang()
 class RNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(RNN, self).__init__()
@@ -38,39 +56,15 @@ class RNN(nn.Module):
         return torch.zeros(1, self.hidden_size)
 
 
-######################################################################
-# Training
-# =========
-# Preparing for Training
-# ----------------------
-#
-# First of all, helper functions to get random pairs of (category, line):
-#
-
 import random
 lang = inspect_tensor_fixed.buildLang()
 n_letters = lang.n_words
 oracle_samples_path = './donald.trc'
 input_data = torch.load(oracle_samples_path).type(torch.LongTensor)
 
-# Random item from a list
 def randomChoice(l):
     return l[random.randint(0, len(l) - 1)].data
 
-
-######################################################################
-# Training the Network
-# --------------------
-#
-# In contrast to classification, where only the last output is used, we
-# are making a prediction at every step, so we are calculating loss at
-# every step.
-#
-# The magic of autograd allows you to simply sum these losses at each step
-# and call backward at the end.
-#
-
-# One-hot matrix of first to last letters (not including EOS) for input
 def inputTensor(line):
     tensor = torch.zeros(len(line), 1, n_letters)
     for li in range(len(line)):
@@ -114,31 +108,12 @@ def train(input_line_tensor, target_line_tensor):
 
     return output, loss.item() / input_line_tensor.size(0)
 
-
-######################################################################
-# To keep track of how long training takes I am adding a
-# ``timeSince(timestamp)`` function which returns a human readable string:
-#
-
-import time
-import math
-
 def timeSince(since):
     now = time.time()
     s = now - since
     m = math.floor(s / 60)
     s -= m * 60
     return '%dm %ds' % (m, s)
-
-
-######################################################################
-# Training is business as usual - call train a bunch of times and wait a
-# few minutes, printing the current time and loss every ``print_every``
-# examples, and keeping store of an average loss per ``plot_every`` examples
-# in ``all_losses`` for plotting later.
-#
-
-# n_words = input_data.shape[0]
 
 rnn = RNN(n_letters, 128, n_letters)
 
@@ -162,49 +137,14 @@ for iter in range(1, n_iters + 1):
         total_loss = 0
 
 
-######################################################################
-# Plotting the Losses
-# -------------------
-#
-# Plotting the historical loss from all\_losses shows the network
-# learning:
-#
-
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-
 plt.figure()
 plt.plot(all_losses)
 
 
-######################################################################
-# Sampling the Network
-# ====================
-#
-# To sample we give the network a letter and ask what the next one is,
-# feed that in as the next letter, and repeat until the EOS token.
-#
-# -  Create tensors for input category, starting letter, and empty hidden
-#    state
-# -  Create a string ``output_name`` with the starting letter
-# -  Up to a maximum output length,
-#
-#    -  Feed the current letter to the network
-#    -  Get the next letter from highest output, and next hidden state
-#    -  If the letter is EOS, stop here
-#    -  If a regular letter, add to ``output_name`` and continue
-#
-# -  Return the final name
-#
-# .. Note::
-#    Rather than having to give it a starting letter, another
-#    strategy would have been to include a "start of string" token in
-#    training and have the network choose its own starting letter.
-#
 
 max_length = 10
 
-# Sample from a category and starting word
+
 def sample(start_letter='they'):
     with torch.no_grad():  # no need to track history in sampling
         start_letter = [lang.word2index[start_letter]]
@@ -226,37 +166,4 @@ def sample(start_letter='they'):
 
         return output_name
 
-# Get multiple samples from one category and multiple starting letters
-def samples(category, start_letters='ABC'):
-    category = "names\\"+category
-    for start_letter in start_letters:
-        print(sample(category, start_letter))
-
-samples('names\\Russian', 'A')
-
 sample()
-
-samples('German', 'GER')
-
-samples('Spanish', 'SPA')
-
-samples('Chinese', 'CHI')
-
-
-######################################################################
-# Exercises
-# =========
-#
-# -  Try with a different dataset of category -> line, for example:
-#
-#    -  Fictional series -> Character name
-#    -  Part of speech -> Word
-#    -  Country -> City
-#
-# -  Use a "start of sentence" token so that sampling can be done without
-#    choosing a start letter
-# -  Get better results with a bigger and/or better shaped network
-#
-#    -  Try the nn.LSTM and nn.GRU layers
-#    -  Combine multiple of these RNNs as a higher level network
-#

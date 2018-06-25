@@ -1,3 +1,9 @@
+################
+#Pytorch seqGan additional functions implementation
+#by: suragnair, https://github.com/suragnair/seqGAN
+#Slightly modified for research by Bauke Brenninkmeijer and Ties Robroek
+#(primarily to correctly handle the reddit dataset)
+
 import torch
 from torch.autograd import Variable
 from math import ceil

@@ -1,8 +1,31 @@
+################
+#Pytorch seqGAN for sentence generation
+#Processes sequences and attempts to fool itself by producing new sequences.
+#Requires .trc file that is generated (on import) by inspect_tensor_fixed
+#
+#The network is heavily based on work by:
+#suragnair, https://github.com/suragnair/seqGAN
+#
+#The work has been heavily altered, switching from oracle to dataset.
+#The original work was on synthetic data and multiple changes were required
+#to make it fit for the reddit data.
+#Original work by suragnair heavily penalized the genrator as it was
+#very powerful on the synthetic data. We had the opposite problem and had
+#to greatly increase the potential of the generator with respect to the
+#discriminator.
+#
+#The system can take a rather long while to train especially when supplied
+#a large dataset. There is no CPU version as that would be unreasonable.
+#(though by changing the CUDA flag it should somewhat work on just a CPU).
+#
+#All other code is strictly our work; Bauke Brenninkmeijer and Ties Robroek.
+
 from __future__ import print_function
 from math import ceil
 import numpy as np
 import sys
 sys.path.append("")
+sys.path.append("..")
 import pdb
 
 import torch
@@ -13,38 +36,25 @@ import generator
 import discriminator
 import helpers
 
+import inspect_tensor_fixed
 
+language = inspect_tensor_fixed.buildLang()
 CUDA = True
-VOCAB_SIZE = 3000#5000
-MAX_SEQ_LEN = 20
+VOCAB_SIZE = 16000#5000
+MAX_SEQ_LEN = 10
 START_LETTER = 0
-BATCH_SIZE = 16#
-MLE_TRAIN_EPOCHS = 100#100
-DIS_PRETRAIN_EPOCHS = 5 #50
-ADV_TRAIN_EPOCHS = 5 #50
+BATCH_SIZE = 32
+MLE_TRAIN_EPOCHS = 50#100
+DIS_PRETRAIN_EPOCHS = 5#50
+ADV_TRAIN_EPOCHS = 50 #50
 POS_NEG_SAMPLES = 10000
 
-GEN_EMBEDDING_DIM = 32
-GEN_HIDDEN_DIM = 32
+GEN_EMBEDDING_DIM = 128
+GEN_HIDDEN_DIM = 256
 DIS_EMBEDDING_DIM = 64
 DIS_HIDDEN_DIM = 64
 
 oracle_samples_path = './donald.trc'
-#oracle_samples_path = './oracle_samples.trc'
-# oracle_state_dict_path = './oracle_EMBDIM32_HIDDENDIM32_VOCAB5000_MAXSEQLEN20.trc'
-# pretrained_gen_path = './gen_MLEtrain_EMBDIM32_HIDDENDIM32_VOCAB5000_MAXSEQLEN20.trc'
-# pretrained_dis_path = './dis_pretrain_EMBDIM_64_HIDDENDIM64_VOCAB5000_MAXSEQLEN20.trc'
-
-# Starting Discriminator Training...
-# Traceback (most recent call last):
-#   File "main.py", line 165, in <module>
-#     train_discriminator(dis, dis_optimizer, oracle_samples, gen, oracle, 50, 3)
-#   File "main.py", line 100, in train_discriminator
-#     pos_val = oracle.sample(100)
-#   File "C:\Users\tt_ro\atom\CognitiveModeling\CognitiveModelingFinal\seqGAN-master\generator.py", line 71, in sample
-#     samples[:, i] = out.data
-# RuntimeError: The expanded size of the tensor (100) must match the existing size (32) at non-singleton dimension 0
-#
 
 def train_generator_MLE(gen, gen_opt, oracle, real_data_samples, epochs):
     """
@@ -63,7 +73,7 @@ def train_generator_MLE(gen, gen_opt, oracle, real_data_samples, epochs):
             loss.backward()
             gen_opt.step()
 
-            total_loss += loss.data[0]
+            total_loss += loss.item()
 
             if (i / BATCH_SIZE) % ceil(
                             ceil(POS_NEG_SAMPLES / float(BATCH_SIZE)) / 10.) == 0:  # roughly every 10% of an epoch
@@ -73,10 +83,10 @@ def train_generator_MLE(gen, gen_opt, oracle, real_data_samples, epochs):
         # each loss in a batch is loss per sample
         total_loss = total_loss / ceil(POS_NEG_SAMPLES / float(BATCH_SIZE)) / MAX_SEQ_LEN
 
-        # sample from generator and compute oracle NLL
-        oracle_loss = helpers.batchwise_oracle_nll(gen, oracle, POS_NEG_SAMPLES, BATCH_SIZE, MAX_SEQ_LEN, start_letter=START_LETTER, gpu=CUDA)
-
-        print(' average_train_NLL = %.4f, oracle_sample_NLL = %.4f' % (total_loss, oracle_loss))
+        # # sample from generator and compute oracle NLL
+        # oracle_loss = helpers.batchwise_oracle_nll(gen, oracle, POS_NEG_SAMPLES, BATCH_SIZE, MAX_SEQ_LEN, start_letter=START_LETTER, gpu=CUDA)
+        #
+        # print(' average_train_NLL = %.4f, oracle_sample_NLL = %.4f' % (total_loss, oracle_loss))
 
 
 def train_generator_PG(gen, gen_opt, oracle, dis, num_batches):
@@ -95,11 +105,11 @@ def train_generator_PG(gen, gen_opt, oracle, dis, num_batches):
         pg_loss.backward()
         gen_opt.step()
 
-    # sample from generator and compute oracle NLL
-    oracle_loss = helpers.batchwise_oracle_nll(gen, oracle, POS_NEG_SAMPLES, BATCH_SIZE, MAX_SEQ_LEN,
-                                                   start_letter=START_LETTER, gpu=CUDA)
-
-    print(' oracle_sample_NLL = %.4f' % oracle_loss)
+    # # sample from generator and compute oracle NLL
+    # oracle_loss = helpers.batchwise_oracle_nll(gen, oracle, POS_NEG_SAMPLES, BATCH_SIZE, MAX_SEQ_LEN,
+    #                                                start_letter=START_LETTER, gpu=CUDA)
+    #
+    # print(' oracle_sample_NLL = %.4f' % oracle_loss)
 
 
 def train_discriminator(discriminator, dis_opt, real_data_samples, generator, oracle, d_steps, epochs):
@@ -109,8 +119,10 @@ def train_discriminator(discriminator, dis_opt, real_data_samples, generator, or
     """
 
     # generating a small validation set before training (using oracle and generator)
-    pos_val = oracle.sample(100)
-    neg_val = generator.sample(100)
+    #pos_val = oracle.sample(100)
+    random_sample = torch.randperm(oracle.shape[0])[:1000]
+    pos_val = oracle[random_sample]
+    neg_val = generator.sample(1000)
     val_inp, val_target = helpers.prepare_discriminator_data(pos_val, neg_val, gpu=CUDA)
 
     for d_step in range(d_steps):
@@ -131,8 +143,8 @@ def train_discriminator(discriminator, dis_opt, real_data_samples, generator, or
                 loss.backward()
                 dis_opt.step()
 
-                total_loss += loss.data[0]
-                total_acc += torch.sum((out>0.5)==(target>0.5)).data[0]
+                total_loss += loss.item()
+                total_acc += torch.sum((out>0.5)==(target>0.5)).item()
 
                 if (i / BATCH_SIZE) % ceil(ceil(2 * POS_NEG_SAMPLES / float(
                         BATCH_SIZE)) / 10.) == 0:  # roughly every 10% of an epoch
@@ -144,13 +156,16 @@ def train_discriminator(discriminator, dis_opt, real_data_samples, generator, or
 
             val_pred = discriminator.batchClassify(val_inp)
             print(' average_loss = %.4f, train_acc = %.4f, val_acc = %.4f' % (
-                total_loss, total_acc, torch.sum((val_pred>0.5)==(val_target>0.5)).data[0]/200.))
+                total_loss, total_acc, torch.sum((val_pred>0.5)==(val_target>0.5)).item()/2000.))
 
 # MAIN
 if __name__ == '__main__':
-    oracle = generator.Generator(GEN_EMBEDDING_DIM, GEN_HIDDEN_DIM, VOCAB_SIZE, MAX_SEQ_LEN, gpu=CUDA, oracle_init=True)
-    # oracle.load_state_dict(torch.load(oracle_state_dict_path))
-    oracle_samples = torch.load(oracle_samples_path).type(torch.LongTensor)
+    # oracle = generator.Generator(GEN_EMBEDDING_DIM, GEN_HIDDEN_DIM, VOCAB_SIZE, MAX_SEQ_LEN, gpu=CUDA, oracle_init=True)
+    # # oracle.load_state_dict(torch.load(oracle_state_dict_path))
+    # oracle_samples = torch.load(oracle_samples_path).type(torch.LongTensor)
+    #
+    oracle = torch.load(oracle_samples_path).type(torch.LongTensor)
+    oracle_samples = oracle[:10000]
     # a new oracle can be generated by passing oracle_init=True in the generator constructor
     # samples for the new oracle can be generated using helpers.batchwise_sample()
 
@@ -165,7 +180,7 @@ if __name__ == '__main__':
 
     # GENERATOR MLE TRAINING
     print('Starting Generator MLE Training...')
-    gen_optimizer = optim.Adam(gen.parameters(), lr=1e-2)
+    gen_optimizer = optim.Adam(gen.parameters(), lr=0.005)#e-2)
     train_generator_MLE(gen, gen_optimizer, oracle, oracle_samples, MLE_TRAIN_EPOCHS)
 
     # torch.save(gen.state_dict(), pretrained_gen_path)
@@ -173,7 +188,7 @@ if __name__ == '__main__':
 
     # PRETRAIN DISCRIMINATOR
     print('\nStarting Discriminator Training...')
-    dis_optimizer = optim.Adagrad(dis.parameters())
+    dis_optimizer = optim.Adagrad(dis.parameters(), lr=0.005)
     train_discriminator(dis, dis_optimizer, oracle_samples, gen, oracle, DIS_PRETRAIN_EPOCHS, 3)
 
     # torch.save(dis.state_dict(), pretrained_dis_path)
@@ -181,17 +196,20 @@ if __name__ == '__main__':
 
     # ADVERSARIAL TRAINING
     print('\nStarting Adversarial Training...')
-    oracle_loss = helpers.batchwise_oracle_nll(gen, oracle, POS_NEG_SAMPLES, BATCH_SIZE, MAX_SEQ_LEN,
-                                               start_letter=START_LETTER, gpu=CUDA)
-    print('\nInitial Oracle Sample Loss : %.4f' % oracle_loss)
+    # oracle_loss = helpers.batchwise_oracle_nll(gen, oracle, POS_NEG_SAMPLES, BATCH_SIZE, MAX_SEQ_LEN,
+    #                                            start_letter=START_LETTER, gpu=CUDA)
+    # print('\nInitial Oracle Sample Loss : %.4f' % oracle_loss)
 
     for epoch in range(ADV_TRAIN_EPOCHS):
         print('\n--------\nEPOCH %d\n--------' % (epoch+1))
         # TRAIN GENERATOR
         print('\nAdversarial Training Generator : ', end='')
         sys.stdout.flush()
-        train_generator_PG(gen, gen_optimizer, oracle, dis, 1)
+        train_generator_PG(gen, gen_optimizer, oracle, dis, 15)
+        testsamp = gen.sample(3).tolist()
+        for sentence in testsamp:
+            print(" ".join([language.index2word[word] for word in sentence]))
 
         # TRAIN DISCRIMINATOR
         print('\nAdversarial Training Discriminator : ')
-        train_discriminator(dis, dis_optimizer, oracle_samples, gen, oracle, 5, 3)
+        train_discriminator(dis, dis_optimizer, oracle_samples, gen, oracle, 1, 3)

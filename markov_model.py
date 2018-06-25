@@ -1,4 +1,10 @@
-import markovify # https://github.com/jsvine/markovify
+#############
+#This work has been based on the markovify library by jsvine:
+#https://github.com/jsvine/markovify
+#All code is our original work; Bauke Brenninkmeijer and Ties Robroek
+
+
+import markovify
 
 MODEL_NAME = "donald"
 MARKOV_SIZE = 2 # State size of markov model for training

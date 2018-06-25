@@ -1,6 +1,28 @@
+################
+#Pytorch dataset processing and language generation
+#Filters all the subreddit comments and generates two dataset files:
+#<datasetname>.trc
+#<datasetname>.txt
+#The txt is used by the markov chain. The torch tensors are used
+#by the RNN and the GAN (as this is much faster).
+#Subreddit comments are stripped from any symbols etc. and are
+#filtered by dictionary.
+#The dictionary is based on https://github.com/dwyl/english-words
+#which is based on a dataset by Infochimps, copyright belongs to them.
+#
+#The language module is based on the pytorch tutorial:
+#Translation with a Sequence to Sequence Network and Attention
+#https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html#sphx-glr-intermediate-seq2seq-translation-tutorial-py
+#
+#We heavily altered the example, creating a system that allows us to
+#translate sentences in a sequence of embeddings.
+#These sequences are then processed sequence-by-sequence (seqGan) and iteratively
+#(RNN).
+#
+#All other code is strictly our work; Bauke Brenninkmeijer and Ties Robroek.
+
 import sys
 sys.path.append("")
-sys.path.append("seqGAN-master")
 import os
 import torch
 import torch.optim as optim
@@ -10,7 +32,8 @@ import numpy as np
 import re, string
 import random
 
-prefix = ""#"seqGAN-master/"
+dataset_filename = "thedonald"
+dataset_exportname = "donald"
 
 class Lang:
     def __init__(self, name):
@@ -52,18 +75,9 @@ def normalizeString(s):
     s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
     return s
 
-def filterPair(p):
-    return len(p[0].split(' ')) < MAX_LENGTH and \
-        len(p[1].split(' ')) < MAX_LENGTH and \
-        p[1].startswith(eng_prefixes)
-
-def filterPairs(pairs):
-    return [pair for pair in pairs if filterPair(pair)]
-
 def prepareData(set, name, reverse=False):
     language = Lang(name)
-    # set = filterPairs(set)
-    # print("Trimmed to %s sentence pairs" % len(pairs))
+
     print("Counting words...")
     for sentence in set:
         try:
@@ -85,7 +99,7 @@ def tensorFromSentence(lang, sentence):
     return torch.tensor(indexes, dtype=torch.long, device=device).view(-1, 1)
 
 def load_words():
-    with open(prefix+'english-words-master/words_alpha.txt') as word_file:
+    with open('words_alpha.txt') as word_file:
         valid_words = set(word_file.read().split())
 
     return valid_words
@@ -94,39 +108,27 @@ def buildLang():
     english_words = load_words()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    df1 = pd.read_csv(os.path.join(prefix+"csvs", "export_thedonald_jan.csv"))
-    df2 = pd.read_csv(os.path.join(prefix+"csvs", "export_thedonald_feb.csv"))
-    csv_donald = pd.concat([df1, df2])
+    df1 = pd.read_csv(os.path.join("csvs", "export_"+dataset_filename+"_jan.csv"))
+    df2 = pd.read_csv(os.path.join("csvs", "export_"+dataset_filename+"_feb.csv"))
+    df3 = pd.read_csv(os.path.join("csvs", "export_"+dataset_filename+"_mar.csv"))
+    csv_total = pd.concat([df1, df2, df3])
 
     #
     #
     # oracle_samples = torch.load(os.path.join("seqGAN-master", "oracle_samples.trc"))
 
-    text_input_data = csv_donald['body']
-
-    text_input_data
+    text_input_data = csv_total['body']
 
     text_input_noempty = text_input_data[text_input_data != "[deleted]"]
     text_input_noempty = text_input_noempty[text_input_noempty != "[removed]"]
     text_input_noempty = text_input_noempty[text_input_noempty != "nan"]
     text_input_noempty = text_input_noempty[text_input_noempty != None]
-    #text_input_noempty = text_input_noempty[text_input_noempty.map(lambda x: not "bert" in x)].reset_index(drop=True)
-
 
     SOS_token = 0
     EOS_token = 1
 
 
     MAX_LENGTH = 10
-
-    eng_prefixes = (
-        "i am ", "i m ",
-        "he is", "he s ",
-        "she is", "she s",
-        "you are", "you re ",
-        "we are", "we re ",
-        "they are", "they re "
-    )
 
     pattern = re.compile('[^a-zA-Z0-9 :]')
     p_spaces = re.compile(' +')
@@ -136,26 +138,24 @@ def buildLang():
     t_input_bound = t_input_filtered[t_input_filtered.map(lambda x: len(x.split())) == 10]
     t_input_bound = t_input_bound[t_input_bound.map(lambda x: np.all([y in english_words for y in x.split()]))].reset_index(drop=True)
 
-    with open("donald.txt",'w')  as file:
+    with open(dataset_exportname+".txt",'w')  as file:
         for line in t_input_bound:
             file.write(line)
             file.write(". ")
 
     resulting_set, language = prepareData(t_input_bound,"donald")
 
-    # 
-    # encoded_set = resulting_set.map(lambda x: indexesFromSentence(language, x))
-    #
-    # npmatrix_out = np.zeros((len(encoded_set.values),np.max([len(x) for x in encoded_set.values])),dtype=np.int32)
-    #
-    # for i in range(npmatrix_out.shape[0]):
-    #     for j in range(len(encoded_set[i])):
-    #         npmatrix_out[i,j] = encoded_set[i][j]
-    #
-    #
-    # tensor_out = torch.tensor(npmatrix_out, dtype = torch.long, device=device)
-    #
-    # torch.save(tensor_out,"donald.trc")
+
+    encoded_set = resulting_set.map(lambda x: indexesFromSentence(language, x))
+
+    npmatrix_out = np.zeros((len(encoded_set.values),np.max([len(x) for x in encoded_set.values])),dtype=np.int32)
+
+    for i in range(npmatrix_out.shape[0]):
+        for j in range(len(encoded_set[i])):
+            npmatrix_out[i,j] = encoded_set[i][j]
+
+
+    tensor_out = torch.tensor(npmatrix_out, dtype = torch.long, device=device)
+
+    torch.save(tensor_out,dataset_exportname+".trc")
     return language#, t_input_bound
-    #
-#lang, tinput = buildLang()

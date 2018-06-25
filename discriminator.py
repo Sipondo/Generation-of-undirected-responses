@@ -1,3 +1,8 @@
+################
+#Pytorch seqGan Discriminator implementation
+#by: suragnair, https://github.com/suragnair/seqGAN
+
+
 import torch
 import torch.autograd as autograd
 import torch.nn as nn

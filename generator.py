@@ -1,3 +1,8 @@
+################
+#Pytorch seqGan Generator implementation
+#by: suragnair, https://github.com/suragnair/seqGAN
+#Slightly modified for research by Bauke Brenninkmeijer and Ties Robroek
+
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
