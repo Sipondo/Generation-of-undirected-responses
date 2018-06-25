@@ -21,7 +21,7 @@ def load_sentences():
 
 sentence_list = load_sentences()
 
-[x for x in sentence_list if "who was in" in x]
+[x for x in sentence_list if " " in x]
 
 
 real:
